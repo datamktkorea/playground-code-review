@@ -60,7 +60,7 @@ jobs:
             "summary": "PR #$PR_NUM $STATUS",
             "themeColor": "$COLOR",
             "title": "PR #$PR_NUM: $PR_TITLE",
-            "text": "Repository **$REPO**\\n**@$PR_USER** → **$PR_BASE** \\(from **$PR_HEAD**\\)\\nStatus: **$STATUS**",
+            "text": "Repository **REPO_HERE**\n**@PR_USER_HERE** → **PR_BASE_HERE** (from **PR_HEAD_HERE**)\nStatus: **STATUS_HERE**",
             "sections": [{
               "facts": [
                 {"name": "Action", "value": "$EVENT"},
