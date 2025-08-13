@@ -1,0 +1,83 @@
+name: Notify Teams on Pull Request
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - converted_to_draft
+      - labeled
+      - unlabeled
+      - review_requested
+      - closed   # merged 포함
+
+jobs:
+  teams-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build MessageCard and send to Teams
+        env:
+          TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          EVENT: ${{ github.event.action }}
+          REPO: ${{ github.repository }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HTML: ${{ github.event.pull_request.html_url }}
+          PR_USER: ${{ github.event.pull_request.user.login }}
+          PR_STATE: ${{ github.event.pull_request.state }}          # open/closed
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.ref }}
+          PR_ADD: ${{ github.event.pull_request.additions }}
+          PR_DEL: ${{ github.event.pull_request.deletions }}
+          PR_CHANGED: ${{ github.event.pull_request.changed_files }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+        run: |
+          # 상태/색상 정리
+          if [ "$PR_MERGED" = "true" ]; then
+            STATUS="merged"
+            COLOR="0078D7"   # 파란색(머지)
+          elif [ "$EVENT" = "closed" ]; then
+            STATUS="closed"
+            COLOR="A80000"   # 빨강(닫힘)
+          elif [ "$PR_DRAFT" = "true" ]; then
+            STATUS="draft"
+            COLOR="777777"   # 회색(드래프트)
+          elif [ "$EVENT" = "synchronize" ]; then
+            STATUS="updated"
+            COLOR="107C10"   # 초록(업데이트)
+          else
+            STATUS="$EVENT"
+            COLOR="6264A7"   # 기본
+          fi
+
+          cat > payload.json <<JSON
+          {
+            "@type": "MessageCard",
+            "@context": "https://schema.org/extensions",
+            "summary": "PR #$PR_NUM $STATUS",
+            "themeColor": "$COLOR",
+            "title": "PR #$PR_NUM: $PR_TITLE",
+            "text": "Repository **$REPO**\\n**@$PR_USER** → **$PR_BASE** \\(from **$PR_HEAD**\\)\\nStatus: **$STATUS**",
+            "sections": [{
+              "facts": [
+                {"name": "Action", "value": "$EVENT"},
+                {"name": "Additions", "value": "$PR_ADD"},
+                {"name": "Deletions", "value": "$PR_DEL"},
+                {"name": "Changed Files", "value": "$PR_CHANGED"}
+              ]
+            }],
+            "potentialAction": [{
+              "@type": "OpenUri",
+              "name": "열기",
+              "targets": [{"os": "default", "uri": "$PR_HTML"}]
+            }]
+          }
+          JSON
+
+          curl -sS -X POST "$TEAMS_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            --data @payload.json \
+            -o /dev/stderr -w "HTTP %{http_code}\n"
