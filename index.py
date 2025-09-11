@@ -1,3 +1,6 @@
 print("Good Day")
 print("Good Bye")
 print("Good Night")
+print("Good Morning")
+print("Good Afternoon")
+print("test-too")
